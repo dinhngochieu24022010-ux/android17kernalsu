@@ -1,0 +1,39 @@
+name: Build Official KernelSU LKM (6.1.157-ab16160610)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3
+
+      - name: Download Google GKI Prebuilt Headers & Clang (ab16160610)
+        run: |
+          mkdir -p ~/gki && cd ~/gki
+          B="https://ci.android.com/builds/submitted/16160610/kernel_aarch64/latest/raw"
+          C="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main"
+          curl -fL "$B/kernel-headers.tar.gz" -o kernel-headers.tar.gz
+          curl -fL "$B/Module.symvers" -o Module.symvers
+          curl -fL "$C/clang-r487747c.tar.gz" -o clang.tar.gz
+          mkdir -p headers clang
+          tar -xzf kernel-headers.tar.gz -C headers
+          tar -xzf clang.tar.gz -C clang
+          cp Module.symvers headers/
+
+      - name: Clone Official KernelSU & Build LKM
+        run: |
+          git clone --depth=1 https://github.com/tiann/KernelSU.git ~/KernelSU
+          export PATH="$HOME/gki/clang/bin:$PATH"
+          make -C ~/gki/headers M=$HOME/KernelSU/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KSU_LKM=1 modules -j$(nproc)
+          cp ~/KernelSU/kernel/kernelsu.ko ~/kernelsu_6.1.157_ab16160610.ko
+          strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^Vermagic="_i
+
+      - name: Upload kernelsu.ko artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernelsu-6.1.157-ab16160610
+          path: ~/kernelsu_6.1.157_ab16160610.ko
