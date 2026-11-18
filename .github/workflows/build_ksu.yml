@@ -9,7 +9,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3 gcc-aarch64-linux-gnu
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3 gcc-aarch64-linux-gnu lld
 
       - name: Clone Linux 6.1.157 & Official KernelSU
         run: |
