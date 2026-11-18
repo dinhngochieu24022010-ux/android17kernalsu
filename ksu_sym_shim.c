@@ -48,3 +48,16 @@ DEFINE_SHIM_VOID(audit_log_n_untrustedstring, (void *ab, const char *string, siz
 DEFINE_SHIM_VOID(audit_log_end, (void *ab), (ab))
 DEFINE_SHIM(int, security_validate_transition, (void *state, u32 oldsid, u32 newsid, u32 tasksid, u16 tclass), (state, oldsid, newsid, tasksid, tclass))
 void audit_log_format(void *ab, const char *fmt, ...) {}
+
+DEFINE_SHIM(int, policydb_read, (void *p, void *fp), (p, fp))
+DEFINE_SHIM(int, policydb_write, (void *p, void *fp), (p, fp))
+DEFINE_SHIM_VOID(policydb_destroy, (void *p), (p))
+DEFINE_SHIM(void *, avtab_search_node, (void *h, void *key), (h, key))
+DEFINE_SHIM(int, avtab_alloc, (void *h, u32 nrules), (h, nrules))
+DEFINE_SHIM_VOID(avtab_destroy, (void *h), (h))
+DEFINE_SHIM(void *, avtab_search_node_next, (void *node, u16 specified), (node, specified))
+DEFINE_SHIM(void *, avtab_insert_nonunique, (void *h, void *key, void *datum), (h, key, datum))
+DEFINE_SHIM_VOID(change_pid, (void *task, int type, void *pid), (task, type, pid))
+DEFINE_SHIM(int, avc_has_perm, (u32 ssid, u32 tsid, u16 tclass, u32 requested, void *auditdata), (ssid, tsid, tclass, requested, auditdata))
+DEFINE_SHIM(bool, current_is_single_threaded, (void), ())
+DEFINE_SHIM(int, security_bounded_transition, (void *state, u32 old_sid, u32 new_sid), (state, old_sid, new_sid))
