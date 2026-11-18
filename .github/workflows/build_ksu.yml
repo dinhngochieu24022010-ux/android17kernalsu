@@ -9,26 +9,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3 clang lld llvm gcc-aarch64-linux-gnu
 
-      - name: Download Google GKI Prebuilt Headers & Clang (ab16160610)
+      - name: Clone Linux 6.1.157 & Official KernelSU
         run: |
-          mkdir -p ~/gki && cd ~/gki
-          B="https://ci.android.com/builds/submitted/16160610/kernel_aarch64/latest/raw"
-          C="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main"
-          curl -fL "$B/kernel-headers.tar.gz" -o kernel-headers.tar.gz || curl -fL "https://android.googlesource.com/kernel/prebuilts/6.1/arm64/android14/+archive/refs/tags/android14-6.1.157_2025-10.tar.gz" -o kernel-headers.tar.gz
-          curl -fL "$B/Module.symvers" -o Module.symvers || touch Module.symvers
-          curl -fL "$C/clang-r487747c.tar.gz" -o clang.tar.gz
-          mkdir -p headers clang
-          tar -xzf kernel-headers.tar.gz -C headers
-          tar -xzf clang.tar.gz -C clang
-          [ -s Module.symvers ] && cp Module.symvers headers/ || true
-
-      - name: Clone Official KernelSU & Build LKM
-        run: |
+          git clone --depth=1 --branch v6.1.157 https://github.com/gregkh/linux.git ~/linux
           git clone --depth=1 https://github.com/tiann/KernelSU.git ~/KernelSU
-          export PATH="$HOME/gki/clang/bin:$PATH"
-          make -C ~/gki/headers M=$HOME/KernelSU/kernel ARCH=arm64 LLVM=0 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- KSU_LKM=1 modules -j$(nproc) || make -C ~/gki/headers M=$HOME/KernelSU/kernel ARCH=arm64 LLVM=1 LLVM_IAS=1 KSU_LKM=1 modules -j$(nproc)
+          cd ~/linux
+          sed -I '-s-/^EXTRAVERSION =.*/EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610/' Makefile
+          make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+          scripts/config -e MODULES -e MODVERSIONS -e KPROBES -e KALLALOX_ONLY_EXPORTED_SYMS -d LOCALVERSION_AUTO
+          make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
+          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- M=$HOME/KernelSU/kernel KSU_LKM=1 modules
           cp ~/KernelSU/kernel/kernelsu.ko ~/kernelsu_6.1.157_ab16160610.ko
           strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^vermagic="
 
