@@ -42,7 +42,7 @@ DEFINE_SHIM(int, cond_compute_av, (void *ctab, void *key, void *avd, void *xperm
 DEFINE_SHIM(int, ebitmap_cmp, (const void *e1, const void *e2), (e1, e2))
 DEFINE_SHIM(int, ebitmap_contains, (const void *e1, const void *e2, u32 last_e2bit), (e1, e2, last_e2bit))
 DEFINE_SHIM(int, cap_capable, (const void *cred, void *ns, int cap, unsigned int opts), (cred, ns, cap, opts))
-DEFINE_SHIM(bool, inode_owner_or_capable, (void *mnt_userns, const void *inode), (mnt_userns, inode))
+DEFINE_SHIM(bool, inode_owner_or_capable, (struct user_namespace *mnt_userns, const struct inode *inode), (mnt_userns, inode))
 DEFINE_SHIM(void *, audit_log_start, (void *ctx, gfp_t gfp_mask, int type), (ctx, gfp_mask, type))
 DEFINE_SHIM_VOID(audit_log_n_untrustedstring, (void *ab, const char *string, size_t len), (ab, string, len))
 DEFINE_SHIM_VOID(audit_log_end, (void *ab), (ab))
