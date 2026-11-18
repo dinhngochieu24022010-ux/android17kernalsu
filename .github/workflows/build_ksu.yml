@@ -20,13 +20,7 @@ jobs:
           cp $GITHUB_WORKSPACE/ksu_sym_shim.c ~/KernelSU/kernel/ksu_sym_shim.c
           sed -i "1i ccflags-y += -DCONFIG_KSU_LKM=1" ~/KernelSU/kernel/Kbuild
           echo "kernelsu-objs += ksu_sym_shim.o" >> ~/KernelSU/kernel/Kbuild
-          python3 -c 'import glob
-for p in glob.glob("/home/runner/KernelSU/kernel/**/*.c", recursive=True):
-    txt = open(p).read()
-    if "ksu_lsm_hook_init" in txt and "void ksu_lsm_hook_init" in txt:
-        txt = txt.replace("void ksu_lsm_hook_init(void)", "void ksu_lsm_hook_init(void) { return; } void _unused_lsm(void)")
-        open(p, "w").write(txt)
-        print("PATCHED_LSM_HOOK:", p)
+          sed -i "s/void ksu_lsm_hook_init(void)/void ksu_lsm_hook_init(void) { return; } void _unused_lsm(void)/g" ~/KernelSU/kernel/*.c
 '
           cd ~/linux
           python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^VERSION =.*", "VERSION = 6", s, 1, re.M); s=re.sub(r"^PATCHLEVEL =.*", "PATCHLEVEL = 1", s, 1, re.M); s=re.sub(r"^SUBLEVEL =.*", "SUBLEVEL = 157", s, 1, re.M); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1, re.M); open("Makefile","w").write(s)'
