@@ -20,11 +20,10 @@ jobs:
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
           scripts/config -e MODULES -d MODVERSIONS -e KPROBES -e KALLALOX_ONLY_EXPORTED_SYMS -d LOCALVERSION_AUTO
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
-          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- M=$HOME/KernelSU/kernel CONFIG_KSU=m KBUILD_MODPOST_WARN=1 modules
-          ls -la ~/KernelSU/kernel/
+          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare security/selinux/
+          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- M=$HOME/KernelSU/kernel CONFIG_KSU=m KSU_LKM=1 KBUILD_MODPOST_WARN=1 modules
           cp ~/KernelSU/kernel/*.ko ~/kernelsu_6.1.157_ab16160610.ko
-          strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^vermagic="
+          strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^Vermagic="_i
 
       - name: Upload kernelsu.ko artifact
         uses: actions/upload-artifact@v4
