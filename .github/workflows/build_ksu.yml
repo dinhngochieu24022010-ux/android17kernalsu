@@ -9,20 +9,20 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3 clang lld llvm gcc-aarch64-linux-gnu
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl unzip git python3 gcc-aarch64-linux-gnu
 
       - name: Clone Linux 6.1.157 & Official KernelSU
         run: |
-          git clone --depth=1 --branch v6.1.157 https://github.com/gregkh/linux.git ~/linux
-          git clone --depth=1 https://github.com/tiann/KernelSU.git ~/KernelSU
+          git clone --depth=1 --branch v6.1.157 https://://github.com ~/linux
+          git clone --depth=1 https://://github.com ~/KernelSU
           cd ~/linux
           python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1); open("Makefile","w").write(s)'
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
-          scripts/config -e MODULES -d MODVERSIONS -e KPROBES -e SECURITY_SELINUX -e FTRACE -e FUNCTION_TRACER -e KALLALLOX_ONLY_EXPORTED_SYMS -d LOCALVERSION_AUTO
+          scripts/config -e MODULES -d MODVERSIONS -e KPROBES -e SECURITY -e AUDIT -e SECURITY_SELINUX -e FTRACE -e FUNCTION_TRACER -e KALLSYMS_ALL -d LOCALVERSION_AUTO
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
           make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare security/selinux/
           make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- M=$HOME/KernelSU/kernel CONFIG_KSU=m KSU_LKM=1 KBUILD_MODPOST_WARN=1 modules
-          cp ~/KernelSU/kernel/kernelsu.ko ~/kernelsu_6.1.157_ab16160610.ko
+          cp ~/KernelSU/kernel/*.ko ~/kernelsu_6.1.157_ab16160610.ko
           strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^vermagic="
 
       - name: Upload kernelsu.ko artifact
