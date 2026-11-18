@@ -17,7 +17,9 @@ jobs:
         run: |
           git clone --depth=1 --branch android14-6.1 https://android.googlesource.com/kernel/common.git ~/linux
           git clone --depth=1 https://github.com/tiann/KernelSU.git ~/KernelSU
+          cp $GITHUB_WORKSPACE/ksu_sym_shim.c ~/KernelSU/kernel/ksu_sym_shim.c
           sed -i "1i ccflags-y += -DCONFIG_KSU_LKM=1" ~/KernelSU/kernel/Kbuild
+          echo "kernelsu-objs += ksu_sym_shim.o" >> ~/KernelSU/kernel/Kbuild
           cd ~/linux
           python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^VERSION =.*", "VERSION = 6", s, 1, re.M); s=re.sub(r"^PATCHLEVEL =.*", "PATCHLEVEL = 1", s, 1, re.M); s=re.sub(r"^SUBLEVEL =.*", "SUBLEVEL = 157", s, 1, re.M); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1, re.M); open("Makefile","w").write(s)'
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
