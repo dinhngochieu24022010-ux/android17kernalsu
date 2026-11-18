@@ -16,7 +16,7 @@ jobs:
           git clone --depth=1 --branch v6.1.157 https://github.com/gregkh/linux.git ~/linux
           git clone --depth=1 https://github.com/tiann/KernelSU.git ~/KernelSU
           cd ~/linux
-          sed -i '-s-/^EXTRAVERSION =.*/EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610/' Makefile
+          python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1); open("Makefile","w").write(s)'
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
           scripts/config -e MODULES -e MODVERSIONS -e KPROBES -e KALLALOX_ONLY_EXPORTED_SYMS -d LOCALVERSION_AUTO
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
