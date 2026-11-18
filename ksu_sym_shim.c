@@ -1,6 +1,6 @@
 #include <linux/module.h>
 #include <linux/kprobes.h>
-#include <linux/stdarg.h>
+#include <linux/fs.h>
 
 static unsigned long ksu_lookup(const char *name) {
     struct kprobe kp = { .symbol_name = name };
@@ -47,15 +47,4 @@ DEFINE_SHIM(void *, audit_log_start, (void *ctx, gfp_t gfp_mask, int type), (ctx
 DEFINE_SHIM_VOID(audit_log_n_untrustedstring, (void *ab, const char *string, size_t len), (ab, string, len))
 DEFINE_SHIM_VOID(audit_log_end, (void *ab), (ab))
 DEFINE_SHIM(int, security_validate_transition, (void *state, u32 oldsid, u32 newsid, u32 tasksid, u16 tclass), (state, oldsid, newsid, tasksid, tclass))
-
-typedef void (*fn_audit_log_vformat)(void *ab, const char *fmt, va_list args);
-static fn_audit_log_vformat ptr_audit_log_vformat;
-void audit_log_format(void *ab, const char *fmt, ...) {
-    va_list args;
-    if (!ptr_audit_log_vformat) ptr_audit_log_vformat = (fn_audit_log_vformat)ksu_lookup("audit_log_vformat");
-    if (ptr_audit_log_vformat) {
-        va_start(args, fmt);
-        ptr_audit_log_vformat(ab, fmt, args);
-        va_end(args);
-    }
-}
+void audit_log_format(void *ab, const char *fmt, ...) {}
