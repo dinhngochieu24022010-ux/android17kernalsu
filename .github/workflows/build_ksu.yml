@@ -20,7 +20,7 @@ jobs:
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
           scripts/config -e MODULES -d MODVERSIONS -e KPROBES -e SECURITY -e AUDIT_SYSCALL  -e SECURITY_SELINUX -e FTRACE -e FUNCTION_TRACER -e KALLSYMS_ALL -d LOCALVERSION_AUTO
           make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare security/selinux/
+          make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare scripts/selinux/genheaders/ && ./scripts/selinux/genheaders/genheaders security/selinux/flask.h security/selinux/av_permissions.h
           make -j$(nproc) ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- M=$HOME/KernelSU/kernel CONFIG_KSU=m KSU_LKM=1 KBUILD_MODPOST_WARN=1 modules
           cp ~/KernelSU/kernel/*.ko ~/kernelsu_6.1.157_ab16160610.ko
           strings ~/kernelsu_6.1.157_ab16160610.ko | grep "^Vermagic="_i
