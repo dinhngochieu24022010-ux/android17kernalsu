@@ -13,8 +13,8 @@ jobs:
 
       - name: Clone Linux 6.1.157 & Official KernelSU
         run: |
-          git clone --depth=1 --branch v6.1.157 https://://github.com ~/linux
-          git clone --depth=1 https://://github.com ~/KernelSU
+          git clone --depth=1 --branch v6.1.157 https://github.com ~/linux
+          git clone --depth=1 https://github.com ~/KernelSU
           cd ~/linux
           python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1); open("Makefile","w").write(s)'
           make ARCH=arm64 LLVM=0 CROSS_COMPILE=aarch64-linux-gnu- defconfig
