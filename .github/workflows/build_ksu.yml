@@ -20,6 +20,7 @@ jobs:
           cp $GITHUB_WORKSPACE/ksu_sym_shim.c ~/KernelSU/kernel/ksu_sym_shim.c
           sed -i "1i ccflags-y += -DCONFIG_KSU_LKM=1" ~/KernelSU/kernel/Kbuild
           echo "kernelsu-objs += ksu_sym_shim.o" >> ~/KernelSU/kernel/Kbuild
+          python3 $GITHUB_WORKSPACE/patch_ksu.py
           cd ~/linux
           python3 -c 'import re; s=open("Makefile").read(); s=re.sub(r"^VERSION =.*", "VERSION = 6", s, 1, re.M); s=re.sub(r"^PATCHLEVEL =.*", "PATCHLEVEL = 1", s, 1, re.M); s=re.sub(r"^SUBLEVEL =.*", "SUBLEVEL = 157", s, 1, re.M); s=re.sub(r"^EXTRAVERSION =.*", "EXTRAVERSION = -android14-11-gb3d4cdadf339-ab16160610", s, 1, re.M); open("Makefile","w").write(s)'
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
@@ -29,7 +30,6 @@ jobs:
           cp $GITHUB_WORKSPACE/Module.symvers ~/linux/Module.symvers
           make -j$(nproc) ARCH=arm64 LLVM=1 LLVM_IAS=1 M=$HOME/KernelSU/kernel CONFIG_KSU=m CONFIG_KSU_LKM=y KSU_LKM=1 KBUILD_MODPOST_WARN=1 modules
           cp ~/KernelSU/kernel/*.ko ~/kernelsu_6.1.157_ab16160610.ko
-          modinfo ~/kernelsu_6.1.157_ab16160610.ko | head -n 15
 
       - name: Upload kernelsu.ko artifact
         uses: actions/upload-artifact@v4
