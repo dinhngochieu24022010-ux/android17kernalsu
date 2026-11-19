@@ -21,7 +21,6 @@ jobs:
           GURL=$(python3 -c 'd, s = chr(46), chr(47); print("https:" + s + s + "github" + d + "com" + s + "tiann" + s + "KernelSU" + d + "git")')
           git clone --depth=1 -b android15-6.6 "$KURL" kernel_src
           git clone --depth=1 -b main "$GURL" KernelSU
-          
 
       - name: Configure Kernel & Inject Exact CRCs + Panic Shims
         run: |
@@ -45,10 +44,12 @@ jobs:
 
           python3 -c '
           import json
+          tab = chr(9)
           crcs = json.load(open("../crc_6.6.118_ab16143355.json"))
           with open("Module.symvers", "w") as f:
               for name, crc in crcs.items():
-                  f.write(f"0x{crc:08x}\t{name}\tvmlinux\tEXPORT_SYMBOL\n")
+                  val = crc if isinstance(crc, int) else crc[0]
+                  f.write(f"0x{val:08x}{tab}{name}{tab}vmlinux{tab}EXPORT_SYMBOL{tab}\n")
           print("INJECTED_SYMVERS:", len(crcs))
           '
 
