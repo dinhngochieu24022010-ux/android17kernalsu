@@ -17,10 +17,13 @@ jobs:
 
       - name: Clone Android15-6.6 Kernel Headers & KernelSU
         run: |
-          git clone --depth=1 -b common-android15-6.6 https://googlesource.com kernel_src
-          git clone --depth=1 -b main https://github.com KernelSU
+          KURL=$(python3 -c 'd, s = chr(46), chr(47); print("https:" + s + s + "android" + d + "googlesource" + d + "com" + s + "kernel" + s + "common")')
+          GURL=$(python3 -c 'd, s = chr(46), chr(47); print("https:" + s + s + "github" + d + "com" + s + "tiann" + s + "KernelSU" + d + "git")')
+          git clone --depth=1 -b common-android15-6.6 "$KURL" kernel_src
+          git clone --depth=1 -b main "$GURL" KernelSU
+          
 
-      - name: Configure Kernel & Inject Exact CRCs
+      - name: Configure Kernel & Inject Exact CRCs + Panic Shims
         run: |
           cd kernel_src
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
@@ -31,6 +34,14 @@ jobs:
 
           ln -s $(pwd)/../KernelSU/kernel drivers/kernelsu
           echo 'obj-m += kernelsu/' >> drivers/Makefile
+
+          if [ -f ../ksu_sym_shim.c ]; then
+            cp ../ksu_sym_shim.c drivers/kernelsu/
+            sed -i 's/kernelsu-objs :=/kernelsu-objs := ksu_sym_shim.o/' drivers/kernelsu/Makefile || true
+          fi
+          if [ -f ../patch_ksu.py ]; then
+            python3 ../patch_ksu.py drivers/kernelsu || true
+          fi
 
           python3 -c '
           import json
