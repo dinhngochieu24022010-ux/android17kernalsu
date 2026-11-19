@@ -56,8 +56,8 @@ jobs:
       - name: Build kernelsu.ko
         run: |
           cd kernel_src
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 security/selinux/flask.h
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 CONFIG_KSU=m CONFIG_KSU_LKM=y M=drivers/kernelsu modules -j$(nproc)
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 security/selinux/
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-I$(pwd)/security/selinux" CONFIG_KSU=m CONFIG_KSU_LKM=y M=drivers/kernelsu modules -j$(nproc)
           cp drivers/kernelsu/kernelsu.ko ../kernelsu_6.6.118_ab16143355.ko
 
       - name: Upload Artifact
