@@ -58,7 +58,7 @@ jobs:
           cd kernel_src
           sed -i 's/^SUBLEVEL = .*/SUBLEVEL = 118/' Makefile
           sed -i 's/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=""/' .config
-          printf '#!/bin/sh\necho "-android15-8-g0908354dac1b-ab16143355-4k"\n' > scripts/setlocalversion && chmod +x scripts/localversion
+          printf '#!/bin/sh\necho "-android15-8-g0908354dac1b-ab16143355-4k"\n' > scripts/setlocalversion && chmod +x scripts/setlocalversion
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android15-8-g0908354dac1b-ab16143355-4k" security/selinux/
           make ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android15-8-g0908354dac1b-ab16143355-4k" KCFLAGS="-I$(pwd)/security/selinux" CONFIG_KSU=m CONFIG_KSU_LKM=y M=drivers/kernelsu modules -j$(nproc)
           cp drivers/kernelsu/kernelsu.ko ../kernelsu_6.6.118_ab16143355.ko
