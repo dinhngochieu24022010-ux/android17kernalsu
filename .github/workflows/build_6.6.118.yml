@@ -1,0 +1,55 @@
+name: Build KernelSU LKM (6.6.118-ab16143355-4k)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev cpio kmod python3 curl git clang lld llvm
+
+      - name: Clone Android15-6.6 Kernel Headers & KernelSU
+        run: |
+          git clone --depth=1 -b common-android15-6.6 https://googlesource.com kernel_src
+          git clone --depth=1 -b main https://github.com KernelSU
+
+      - name: Configure Kernel & Inject Exact CRCs
+        run: |
+          cd kernel_src
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
+          ./scripts/config -d LTO_CLANG_THIN -d LTO_CLANG_FULL -e LTO_NONE -e MODVERSIONS -e MODULE_UNLOAD -e KPROBES
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+          sed -i 's/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="-android15-8-g0908354dac1b-ab16143355-4k"/' .config
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 prepare modules_prepare
+
+          ln -s $(pwd)/../KernelSU/kernel drivers/kernelsu
+          echo 'obj-m += kernelsu/' >> drivers/Makefile
+
+          python3 -c '
+          import json
+          crcs = json.load(open("../crc_6.6.118_ab16143355.json"))
+          with open("Module.symvers", "w") as f:
+              for name, crc in crcs.items():
+                  f.write(f"0x{crc:08x}\t{name}\tvmlinux\tEXPORT_SYMBOL\n")
+          print("INJECTED_SYMVERS:", len(crcs))
+          '
+
+      - name: Build kernelsu.ko
+        run: |
+          cd kernel_src
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 M=drivers/kernelsu modules -j$(nproc)
+          cp drivers/kernelsu/kernelsu.ko ../kernelsu_6.6.118_ab16143355.ko
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernelsu-6.6.118-ab16143355
+          path: kernelsu_6.6.118_ab16143355.ko
+          
