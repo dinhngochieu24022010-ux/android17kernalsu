@@ -19,7 +19,7 @@ jobs:
         run: |
           KURL=$(python3 -c 'd, s = chr(46), chr(47); print("https:" + s + s + "android" + d + "googlesource" + d + "com" + s + "kernel" + s + "common")')
           GURL=$(python3 -c 'd, s = chr(46), chr(47); print("https:" + s + s + "github" + d + "com" + s + "tiann" + s + "KernelSU" + d + "git")')
-          git clone --depth=1 -b common-android15-6.6 "$KURL" kernel_src
+          git clone --depth=1 -b android15-6.6 "$KURL" kernel_src
           git clone --depth=1 -b main "$GURL" KernelSU
           
 
