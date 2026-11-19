@@ -56,10 +56,12 @@ jobs:
       - name: Build kernelsu.ko
         run: |
           cd kernel_src
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 security/selinux/
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-I$(pwd)/security/selinux" CONFIG_KSU=m CONFIG_KSU_LKM=y M=drivers/kernelsu modules -j$(nproc)
+          sed -i 's/^SUBLEVEL = .*/SUBLEVEL = 118/' Makefile
+          touch .scmversion
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android15-8-g0908354dac1b-ab16143355-4k" security/selinux/
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android15-8-g0908354dac1b-ab16143355-4k" KCFLAGS="-I$(pwd)/security/selinux" CONFIG_KSU=m CONFIG_KSU_LKM=y M=drivers/kernelsu modules -j$(nproc)
           cp drivers/kernelsu/kernelsu.ko ../kernelsu_6.6.118_ab16143355.ko
-
+        
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
