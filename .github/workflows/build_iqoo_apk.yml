@@ -1,0 +1,94 @@
+name: Build iQOO 15 Game Spoof Xposed APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Android SDK & Build APK
+        run: |
+          mkdir -p iqoo_xposed/src/com/custom/iqoo15 iqoo_xposed/src/de/robv/android/xposed/callbacks iqoo_xposed/assets iqoo_xposed/obj
+          cd iqoo_xposed
+
+          python3 -c '
+          u = "http:/" + "/schemas" + chr(46) + "android" + chr(46) + "com/apk/res/android"
+          xml = f"""<?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="{u}"
+              package="com.custom.iqoo15"
+              android:versionCode="1"
+              android:versionName="1.0">
+              <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
+              <application android:label="iQOO 15 Game Spoof" android:hasCode="true">
+                  <meta-data android:name="xposedmodule" android:value="true"/>
+                  <meta-data android:name="xposeddescription" android:value="Gia lap Vivo iQOO 15 (V2505A) rieng cho game mo khoa max FPS"/>
+                  <meta-data android:name="xposedminversion" android:value="82"/>
+              </application>
+          </manifest>"""
+          open("AndroidManifest.xml", "w").write(xml)
+          '
+
+          cat << 'EOF' > src/de/robv/android/xposed/callbacks/XC_LoadPackage.java
+          package de.robv.android.xposed.callbacks;
+          public class XC_LoadPackage {
+              public static class LoadPackageParam {
+                  public String packageName;
+              }
+          }
+          EOF
+
+          cat << 'EOF' > src/de/robv/android/xposed/IXposedHookLoadPackage.java
+          package de.robv.android.xposed;
+          import de.robv.android.xposed.callbacks.XC_LoadPackage;
+          public interface IXposedHookLoadPackage {
+              void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable;
+          }
+          EOF
+
+          cat << 'EOF' > src/com/custom/iqoo15/HookEntry.java
+          package com.custom.iqoo15;
+          import java.lang.reflect.Field;
+          import de.robv.android.xposed.IXposedHookLoadPackage;
+          import de.robv.android.xposed.callbacks.XC_LoadPackage;
+
+          public class HookEntry implements IXposedHookLoadPackage {
+              @Override
+              public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
+                  set("BRAND", "vivo");
+                  set("MANUFACTURER", "vivo");
+                  set("MODEL", "V2505A");
+                  set("PRODUCT", "PD2505");
+                  set("DEVICE", "PD2505");
+                  set("MARKETNAME", "iQOO 15");
+                  set("SOC_MANUFACTURER", "Qualcomm");
+                  set("SOC_MODEL", "SM8850-AC");
+              }
+              private static void set(String name, String val) {
+                  try {
+                      Field f = android.os.Build.class.getDeclaredField(name);
+                      f.setAccessible(true);
+                      f.set(null, val);
+                  } catch (Throwable ignored) {}
+              }
+          }
+          EOF
+
+          echo "com.custom.iqoo15.HookEntry" > assets/xposed_init
+
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
+          AJAR=$(ls -d $ANDROID_HOME/platforms/android-* | tail -n 1)/android.jar
+
+          javac --release 8 -cp "$AJAR" -d obj $(find src -name "*.java")
+          "$BT/d8" --output . $(find obj -name "*.class")
+          "$BT/aapt" package -f -M AndroidManifest.xml -A assets -I "$AJAR" -F unsigned.apk
+          zip -uj unsigned.apk classes.dex
+          keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          "$BT/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../iQOO15_GameSpoof.apk unsigned.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: iQOO15_GameSpoof
+          path: iQOO15_GameSpoof.apk
+          
