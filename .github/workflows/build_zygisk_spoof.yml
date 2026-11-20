@@ -1,0 +1,189 @@
+name: Build Zygisk Native Game Spoof
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-zygisk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Zygisk C++ Module
+        run: |
+          mkdir -p mod/zygisk
+          NDK=$(ls -d $ANDROID_HOME/ndk/* | tail -n 1)
+          CLANG="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang++"
+
+          cat << 'EOF' > zygisk.hpp
+          #pragma once
+          #include <jni.h>
+          #include <cstdint>
+
+          #define ZYGISK_API_VERSION 4
+
+          namespace zygisk {
+          struct Api;
+          struct AppSpecializeArgs {
+              jint &uid;
+              jint &gid;
+              jintArray &gids;
+              jint &runtime_flags;
+              jobjectArray &rlimits;
+              jint &mount_external;
+              jstring &se_info;
+              jstring &nice_name;
+              jstring &instruction_set;
+              jstring &app_data_dir;
+              jboolean *is_child_zygote;
+              jboolean *is_top_app;
+              jobjectArray *pkg_data_info_list;
+              jobjectArray *whitelisted_data_info_list;
+              jboolean *mount_data_mirror;
+              jboolean *mount_storage_mirror;
+          };
+          struct ServerSpecializeArgs {
+              jint &uid;
+              jint &gid;
+              jintArray &gids;
+              jint &runtime_flags;
+              jlong &permitted_capabilities;
+              jlong &effective_capabilities;
+          };
+          enum Option : int {
+              FORCE_DENYLIST_UNMOUNT = 0,
+              DLCLOSE_MODULE_LIBRARY = 1,
+          };
+          class ModuleBase {
+          public:
+              virtual void onLoad(Api *api, JNIEnv *env) {}
+              virtual void preAppSpecialize(AppSpecializeArgs *args) {}
+              virtual void postAppSpecialize(const AppSpecializeArgs *args) {}
+              virtual void preServerSpecialize(ServerSpecializeArgs *args) {}
+              virtual void postServerSpecialize(const ServerSpecializeArgs *args) {}
+          };
+          struct Api {
+              void *impl;
+              bool (*registerModule)(Api *, ModuleBase *);
+              void (*hookJniNativeMethods)(JNIEnv *, const char *, JNINativeMethod *, int);
+              void (*pltHookRegister)(dev_t, ino_t, const char *, void *, void **);
+              bool (*pltHookCommit)();
+              int (*connectCompanion)(void *);
+              void (*setOption)(void *, Option);
+              int (*getModuleDir)(void *);
+              uint32_t (*getFlags)(void *);
+          };
+          }
+
+          extern "C" [[gnu::visibility("default")]] void zygisk_module_entry(zygisk::Api *api, JNIEnv *env);
+          #define REGISTER_ZYGISK_MODULE(clazz) \
+          static clazz *g_module = nullptr; \
+          void zygisk_module_entry(zygisk::Api *api, JNIEnv *env) { \
+              g_module = new clazz(); \
+              api->registerModule(api, g_module); \
+          }
+          EOF
+
+          cat << 'EOF' > main.cpp
+          #include <cstring>
+          #include <cstdio>
+          #include <sys/stat.h>
+          #include <unistd.h>
+          #include <dlfcn.h>
+          #include "zygisk.hpp"
+
+          static int (*orig_system_property_get)(const char *name, char *value) = nullptr;
+
+          static int my_system_property_get(const char *name, char *value) {
+              if (name && value) {
+                  if (strcmp(name, "ro.product.brand") == 0 ||
+                      strcmp(name, "ro.product.manufacturer") == 0 ||
+                      strcmp(name, "ro.product.vendor.brand") == 0 ||
+                      strcmp(name, "ro.product.vendor.manufacturer") == 0) {
+                      strcpy(value, "vivo");
+                      return 4;
+                  }
+                  if (strcmp(name, "ro.product.model") == 0 ||
+                      strcmp(name, "ro.product.vendor.model") == 0 ||
+                      strcmp(name, "ro.vivo.product.model") == 0) {
+                      strcpy(value, "I2401");
+                      return 5;
+                  }
+                  if (strcmp(name, "ro.product.device") == 0 ||
+                      strcmp(name, "ro.product.name") == 0 ||
+                      strcmp(name, "ro.product.vendor.device") == 0) {
+                      strcpy(value, "PD2408");
+                      return 6;
+                  }
+                  if (strcmp(name, "ro.product.marketname") == 0) {
+                      strcpy(value, "iQOO 13");
+                      return 7;
+                  }
+                  if (strcmp(name, "ro.soc.model") == 0) {
+                      strcpy(value, "SM8750-AB");
+                      return 9;
+                  }
+              }
+              return orig_system_property_get ? orig_system_property_get(name, value) : 0;
+          }
+
+          class GameSpoofModule : public zygisk::ModuleBase {
+          public:
+              void onLoad(zygisk::Api *api, JNIEnv *env) override {
+                  this->api = api;
+                  this->env = env;
+              }
+
+              void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
+                  const char *raw_pkg = env->GetStringUTFChars(args->nice_name, nullptr);
+                  bool is_target = false;
+                  if (raw_pkg) {
+                      if (strstr(raw_pkg, "sgame") != nullptr ||
+                          strstr(raw_pkg, "tencent.ig") != nullptr ||
+                          strstr(raw_pkg, "activision.callofduty") != nullptr ||
+                          strstr(raw_pkg, "GenshinImpact") != nullptr) {
+                          is_target = true;
+                      }
+                      env->ReleaseStringUTFChars(args->nice_name, raw_pkg);
+                  }
+
+                  if (!is_target) {
+                      api->setOption(api->impl, zygisk::Option::DLCLOSE_MODULE_LIBRARY);
+                      return;
+                  }
+
+                  struct stat st;
+                  if (stat("/apex/com.android.runtime/lib64/bionic/libc.so", &st) == 0 ||
+                      stat("/system/lib64/libc.so", &st) == 0) {
+                      api->pltHookRegister(st.st_dev, st.st_ino, "__system_property_get",
+                                           (void *)my_system_property_get,
+                                           (void **)&orig_system_property_get);
+                      api->pltHookCommit();
+                  }
+              }
+
+          private:
+              zygisk::Api *api = nullptr;
+              JNIEnv *env = nullptr;
+          };
+
+          REGISTER_ZYGISK_MODULE(GameSpoofModule)
+          EOF
+
+          "$CLANG" -O2 -shared -fPIC -fvisibility=hidden main.cpp -o mod/zygisk/arm64-v8a.so -llog
+
+          cat << 'EOF' > mod/module.prop
+          id=zygisk_iqoo_gamespoof
+          name=Zygisk Native iQOO 13/15 Game Spoof
+          version=v1.0
+          versionCode=1
+          author=Custom
+          description=Hook C++ __system_property_get rieng cho game mo khoa 120 FPS an toan 100%
+          EOF
+
+          cd mod && zip -r ../Zygisk_iQOO_GameSpoof.zip .
+
+      - name: Upload Zygisk Module
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zygisk_iQOO_GameSpoof
+          path: Zygisk_iQOO_GameSpoof.zip
+          
