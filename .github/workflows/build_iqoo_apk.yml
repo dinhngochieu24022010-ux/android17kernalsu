@@ -17,12 +17,12 @@ jobs:
           xml = f"""<?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="{u}"
               package="com.custom.iqoo15"
-              android:versionCode="1"
-              android:versionName="1.0">
+              android:versionCode="2"
+              android:versionName="2.0">
               <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
               <application android:label="iQOO 15 Game Spoof" android:hasCode="true">
                   <meta-data android:name="xposedmodule" android:value="true"/>
-                  <meta-data android:name="xposeddescription" android:value="Gia lap Vivo iQOO 15 (V2505A) rieng cho game mo khoa max FPS"/>
+                  <meta-data android:name="xposeddescription" android:value="Gia lap Flagship mo khoa 120 FPS Sieu Cao rieng cho game"/>
                   <meta-data android:name="xposedminversion" android:value="82"/>
               </application>
           </manifest>"""
@@ -34,7 +34,29 @@ jobs:
           public class XC_LoadPackage {
               public static class LoadPackageParam {
                   public String packageName;
+                  public ClassLoader classLoader;
               }
+          }
+          EOF
+
+          cat << 'EOF' > src/de/robv/android/xposed/XC_MethodHook.java
+          package de.robv.android.xposed;
+          public abstract class XC_MethodHook {
+              public static class MethodHookParam {
+                  public Object[] args;
+                  public Object getResult() { return null; }
+                  public void setResult(Object result) {}
+              }
+              protected void beforeHookedMethod(MethodHookParam param) throws Throwable {}
+              protected void afterHookedMethod(MethodHookParam param) throws Throwable {}
+          }
+          EOF
+
+          cat << 'EOF' > src/de/robv/android/xposed/XposedHelpers.java
+          package de.robv.android.xposed;
+          public class XposedHelpers {
+              public static Class<?> findClass(String className, ClassLoader classLoader) { return null; }
+              public static Object findAndHookMethod(Class<?> clazz, String methodName, Object... parameterTypesAndCallback) { return null; }
           }
           EOF
 
@@ -49,22 +71,56 @@ jobs:
           cat << 'EOF' > src/com/custom/iqoo15/HookEntry.java
           package com.custom.iqoo15;
           import java.lang.reflect.Field;
+          import java.util.HashMap;
+          import java.util.Map;
           import de.robv.android.xposed.IXposedHookLoadPackage;
+          import de.robv.android.xposed.XC_MethodHook;
+          import de.robv.android.xposed.XposedHelpers;
           import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
           public class HookEntry implements IXposedHookLoadPackage {
+              private static final Map<String, String> PROPS = new HashMap<>();
+              static {
+                  PROPS.put("ro.product.brand", "vivo");
+                  PROPS.put("ro.product.manufacturer", "vivo");
+                  PROPS.put("ro.product.model", "I2401");
+                  PROPS.put("ro.product.device", "PD2408");
+                  PROPS.put("ro.product.marketname", "iQOO 13");
+                  PROPS.put("ro.soc.manufacturer", "Qualcomm");
+                  PROPS.put("ro.soc.model", "SM8750-AB");
+              }
+
               @Override
               public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) {
-                  set("BRAND", "vivo");
-                  set("MANUFACTURER", "vivo");
-                  set("MODEL", "V2505A");
-                  set("PRODUCT", "PD2505");
-                  set("DEVICE", "PD2505");
-                  set("MARKETNAME", "iQOO 15");
-                  set("SOC_MANUFACTURER", "Qualcomm");
-                  set("SOC_MODEL", "SM8850-AC");
+                  setBuild("BRAND", "vivo");
+                  setBuild("MANUFACTURER", "vivo");
+                  setBuild("MODEL", "I2401");
+                  setBuild("PRODUCT", "PD2408");
+                  setBuild("DEVICE", "PD2408");
+                  setBuild("MARKETNAME", "iQOO 13");
+                  setBuild("SOC_MANUFACTURER", "Qualcomm");
+                  setBuild("SOC_MODEL", "SM8750-AB");
+
+                  try {
+                      Class<?> sp = XposedHelpers.findClass("android.os.SystemProperties", lpparam.classLoader);
+                      XposedHelpers.findAndHookMethod(sp, "get", String.class, new XC_MethodHook() {
+                          @Override
+                          protected void afterHookedMethod(MethodHookParam param) {
+                              String key = (String) param.args[0];
+                              if (PROPS.containsKey(key)) param.setResult(PROPS.get(key));
+                          }
+                      });
+                      XposedHelpers.findAndHookMethod(sp, "get", String.class, String.class, new XC_MethodHook() {
+                          @Override
+                          protected void afterHookedMethod(MethodHookParam param) {
+                              String key = (String) param.args[0];
+                              if (PROPS.containsKey(key)) param.setResult(PROPS.get(key));
+                          }
+                      });
+                  } catch (Throwable ignored) {}
               }
-              private static void set(String name, String val) {
+
+              private static void setBuild(String name, String val) {
                   try {
                       Field f = android.os.Build.class.getDeclaredField(name);
                       f.setAccessible(true);
@@ -86,7 +142,7 @@ jobs:
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           "$BT/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../iQOO15_GameSpoof.apk unsigned.apk
 
-      - name: Upload APK
+       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: iQOO15_GameSpoof
